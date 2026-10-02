@@ -8,15 +8,8 @@ from inu.config.loader import deep_merge
 
 MakeConfigDir = Callable[[str, dict[str, str]], Path]
 
-BASE = """\
-instance_name: base
-log: {level: INFO, format: json}
-telemetry:
-  service_name: inu
-  traces: {exporter: none, sample_ratio: 1.0}
-  metrics: {exporter: none, export_interval_ms: 1000}
-features: {private_mode: false, cloud_llm: false}
-"""
+# The shipped defaults (log: INFO/json, cloud off), so new settings never drift from tests.
+BASE = (Path(__file__).resolve().parents[4] / "config" / "base.yaml").read_text("utf-8")
 
 
 # ------------------------------------------------------------- shipped config

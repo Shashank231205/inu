@@ -56,6 +56,52 @@ def test_diag_emits_one_turn_with_every_stage(
     assert "Emitted diagnostic turn" in capsys.readouterr().out
 
 
+def test_profile_works_before_or_after_the_command(capsys: pytest.CaptureFixture[str]) -> None:
+    assert main(["--profile", "vm", "config", "check"]) == 0
+    assert main(["config", "check", "--profile", "vm"]) == 0
+    assert capsys.readouterr().out.count("profile: vm") == 2
+
+
+class _FakeEntryPoint:
+    def __init__(self, name: str, factory: object) -> None:
+        self.name = name
+        self._factory = factory
+
+    def load(self) -> object:
+        if isinstance(self._factory, Exception):
+            raise self._factory
+        return self._factory
+
+
+def test_plugins_are_discovered_and_bad_ones_skipped(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    class Extra:
+        name = "extra"
+        help = "An extra command"
+
+    monkeypatch.setattr(
+        cli,
+        "entry_points",
+        lambda group: [
+            _FakeEntryPoint("extra", Extra),
+            _FakeEntryPoint("broken", ImportError("no module named nope")),
+            _FakeEntryPoint("dup", cli.ConfigCommand),
+        ],
+    )
+
+    names = [command.name for command in cli.discover_commands()]
+
+    assert names == ["config", "diag", "extra"]
+    err = capsys.readouterr().err
+    assert "skipping command plugin 'broken': no module named nope" in err
+    assert "duplicate command 'config' ignored" in err
+
+
+def test_installed_voice_package_contributes_audio_command() -> None:
+    assert "audio" in [command.name for command in cli.discover_commands()]
+
+
 def test_diag_end_to_end_in_a_fresh_process(repo_config_dir: Path) -> None:
     """Real entry point, real global providers, console exporters."""
     env = {

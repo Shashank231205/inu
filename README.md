@@ -4,7 +4,7 @@ A personal AI system you talk to. Say its name and it answers fast enough to fee
 
 Local first, free to run, built like production software.
 
-> **Status:** Phase 4 of 77, Foundations. See the [roadmap](docs/roadmap.md).
+> **Status:** Phase 5 of 77, Real-time voice. See the [roadmap](docs/roadmap.md).
 
 ## Architecture
 
@@ -26,6 +26,7 @@ The reasoning is in [ADR 0002](docs/adr/0002-hybrid-compute-topology.md).
 - [Configuration](docs/configuration.md): layers, profiles and encrypted secrets
 - [Observability](docs/observability.md): turns, stages, logs, traces, metrics, error taxonomy
 - [CI/CD](docs/ci.md): workflows, supply-chain rules, releases
+- [Audio I/O](docs/audio.md): capture, playback, devices, dropout benchmark
 - [Architecture decisions](docs/adr/)
 
 ## Development
@@ -45,13 +46,14 @@ Commits follow [Conventional Commits](https://www.conventionalcommits.org/). A c
 ## Layout
 
 ```
-packages/core/   core library: domain types, interfaces, orchestration
+packages/core/   core library: config, observability, errors, CLI with command plugins
+packages/voice/  real-time voice: audio I/O (laptop only)
 config/          base.yaml (all defaults) and per-machine profiles
 secrets/         SOPS-encrypted secrets, one file per profile
 docs/            vision, requirements, threat model, roadmap, ADRs
 ```
 
-Deployables (`apps/voice`, `apps/api`, `apps/worker`) and training code (`training/`, `evals/`) are added in the phases that introduce them.
+Deployables (`apps/api`, `apps/worker`) and training code (`training/`, `evals/`) are added in the phases that introduce them.
 
 ## License
 

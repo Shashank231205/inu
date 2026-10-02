@@ -3,3 +3,7 @@ instance_name: laptop
 
 log:
   format: console
+
+audio:
+  # WASAPI shared mode: 2-3 ms device latency, versus tens of ms on MME.
+  host_api: Windows WASAPI

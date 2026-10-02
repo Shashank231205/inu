@@ -64,7 +64,7 @@ repos:
         files: ^secrets/.*\.enc\.env$
       - id: mypy
         name: mypy (strict)
-        entry: uv run mypy
+        entry: uv run poe typecheck
         language: system
         types: [python]
         pass_filenames: false

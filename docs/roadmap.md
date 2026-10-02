@@ -26,7 +26,7 @@ The immutable event log is built in Stage D, not Stage N. That way every event s
 ## B: Real-time voice
 | # | Phase | Status |
 |---|---|---|
-| 5 | Audio I/O engine | ⬜ |
+| 5 | Audio I/O engine: 0 dropouts at 80% CPU (+ GIL load), ADR 0006 | ✅ |
 | 6 | Model bake-off on target hardware | ⬜ |
 | 7 | Streaming STT + VAD | ⬜ |
 | 8 | Streaming TTS | ⬜ |

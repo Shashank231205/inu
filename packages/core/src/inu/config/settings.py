@@ -13,6 +13,7 @@ from pydantic import (
     ConfigDict,
     Field,
     HttpUrl,
+    PositiveInt,
     SecretStr,
     field_validator,
     model_validator,
@@ -77,6 +78,51 @@ class TelemetrySettings(_Section):
     metrics: MetricSettings
 
 
+class ResampleQuality(StrEnum):
+    """soxr quality presets. Higher quality adds streaming delay (see ADR 0006)."""
+
+    QQ = "QQ"
+    LQ = "LQ"
+    MQ = "MQ"
+    HQ = "HQ"
+    VHQ = "VHQ"
+
+
+class AudioDirectionSettings(_Section):
+    device: str | None = Field(
+        description="Case-insensitive part of the device name; null selects the default."
+    )
+    sample_rate: PositiveInt | None = Field(description="Null uses the device's native rate.")
+    block_ms: int = Field(gt=0, le=100, description="Audio callback period.")
+    buffer_ms: int = Field(gt=0, description="Ring buffer length.")
+
+    @model_validator(mode="after")
+    def _buffer_holds_several_blocks(self) -> Self:
+        if self.buffer_ms < 4 * self.block_ms:
+            raise ValueError("buffer_ms must be at least 4 x block_ms")
+        return self
+
+
+class AudioSettings(_Section):
+    host_api: str | None = Field(description="e.g. 'Windows WASAPI'; null uses the default.")
+    pipeline_sample_rate: PositiveInt = Field(description="Rate VAD and STT consume.")
+    frame_ms: PositiveInt = Field(description="Length of each captured frame.")
+    resample_quality: ResampleQuality
+    reconnect_interval_ms: PositiveInt
+    stall_timeout_ms: PositiveInt = Field(description="No callbacks for this long = stream lost.")
+    gil_switch_interval_ms: float = Field(
+        gt=0, le=5, description="CPython GIL switch interval while audio runs (ADR 0006)."
+    )
+    input: AudioDirectionSettings
+    output: AudioDirectionSettings
+
+    @model_validator(mode="after")
+    def _frames_are_whole_samples(self) -> Self:
+        if self.pipeline_sample_rate * self.frame_ms % 1000:
+            raise ValueError("pipeline_sample_rate x frame_ms must be a multiple of 1000")
+        return self
+
+
 class FeatureFlags(_Section):
     private_mode: bool = Field(description="Keep every request on this machine (FR-B3).")
     cloud_llm: bool = Field(description="Allow routing requests to cloud LLM providers.")
@@ -120,6 +166,7 @@ class Settings(BaseSettings):
     instance_name: str = Field(min_length=1, description="Identifies this device in traces.")
     log: LogSettings
     telemetry: TelemetrySettings
+    audio: AudioSettings
     features: FeatureFlags
     secrets: ProviderSecrets = ProviderSecrets()
 

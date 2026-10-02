@@ -13,6 +13,7 @@ from typing import ClassVar
 
 class ErrorCategory(StrEnum):
     CONFIG = "config"
+    DEVICE = "device"
     VALIDATION = "validation"
     PROVIDER = "provider"
     TIMEOUT = "timeout"

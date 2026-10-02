@@ -18,6 +18,29 @@ telemetry:
     exporter: none
     export_interval_ms: 10000
 
+audio:
+  # null = PortAudio's default host API. On Windows that's MME, which has high latency.
+  host_api: null
+  pipeline_sample_rate: 16000   # what VAD and STT consume
+  frame_ms: 20
+  # LQ adds <=10 ms of resampler delay; HQ adds 20-30 ms (ADR 0006).
+  resample_quality: LQ
+  reconnect_interval_ms: 1000
+  stall_timeout_ms: 1000
+  # CPython's 5 ms default starves audio callbacks when Python threads are busy:
+  # measured 69% of audio delivered at 5 ms vs 100% at 1 ms (ADR 0006).
+  gil_switch_interval_ms: 1
+  input:
+    device: null      # part of the device name; null = host API default
+    sample_rate: null # null = device native rate
+    block_ms: 10
+    buffer_ms: 2000
+  output:
+    device: null
+    sample_rate: null
+    block_ms: 10
+    buffer_ms: 10000  # TTS can run faster than real time
+
 features:
   private_mode: false
   # Enabled per profile once a provider key exists in its secrets file.
