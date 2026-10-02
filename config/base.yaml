@@ -8,6 +8,16 @@ log:
   level: INFO
   format: json
 
+telemetry:
+  service_name: inu
+  # exporter: none | console | otlp (otlp needs otlp_endpoint, e.g. http://localhost:4318)
+  traces:
+    exporter: none
+    sample_ratio: 1.0
+  metrics:
+    exporter: none
+    export_interval_ms: 10000
+
 features:
   private_mode: false
   # Enabled per profile once a provider key exists in its secrets file.

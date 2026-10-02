@@ -17,6 +17,7 @@ import yaml
 from pydantic import ValidationError
 
 from inu.config.settings import Settings
+from inu.errors import ErrorCategory, InuError
 
 PROFILE_ENV = "INU_PROFILE"
 CONFIG_DIR_ENV = "INU_CONFIG_DIR"
@@ -24,8 +25,11 @@ SECRETS_DIR_ENV = "INU_SECRETS_DIR"  # pragma: allowlist secret (variable name)
 DEFAULT_CONFIG_DIR = Path("config")
 
 
-class ConfigError(Exception):
+class ConfigError(InuError):
     """Configuration is missing or invalid. The message is meant for humans."""
+
+    code = "config.invalid"
+    category = ErrorCategory.CONFIG
 
 
 def load_settings(

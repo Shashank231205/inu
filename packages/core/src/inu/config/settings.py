@@ -8,7 +8,15 @@ setting. Only secrets are optional, because a fresh clone has none.
 from enum import StrEnum
 from typing import Any, Self
 
-from pydantic import BaseModel, ConfigDict, Field, SecretStr, field_validator, model_validator
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    Field,
+    HttpUrl,
+    SecretStr,
+    field_validator,
+    model_validator,
+)
 from pydantic_settings import (
     BaseSettings,
     PydanticBaseSettingsSource,
@@ -36,6 +44,37 @@ class _Section(BaseModel):
 class LogSettings(_Section):
     level: LogLevel
     format: LogFormat
+
+
+class ExporterKind(StrEnum):
+    NONE = "none"
+    CONSOLE = "console"
+    OTLP = "otlp"
+
+
+class _ExporterSettings(_Section):
+    exporter: ExporterKind
+    otlp_endpoint: HttpUrl | None = None
+
+    @model_validator(mode="after")
+    def _otlp_needs_endpoint(self) -> Self:
+        if self.exporter is ExporterKind.OTLP and self.otlp_endpoint is None:
+            raise ValueError("otlp_endpoint is required when exporter is 'otlp'")
+        return self
+
+
+class TraceSettings(_ExporterSettings):
+    sample_ratio: float = Field(ge=0.0, le=1.0)
+
+
+class MetricSettings(_ExporterSettings):
+    export_interval_ms: int = Field(gt=0)
+
+
+class TelemetrySettings(_Section):
+    service_name: str = Field(min_length=1)
+    traces: TraceSettings
+    metrics: MetricSettings
 
 
 class FeatureFlags(_Section):
@@ -80,6 +119,7 @@ class Settings(BaseSettings):
     profile: str = Field(min_length=1)
     instance_name: str = Field(min_length=1, description="Identifies this device in traces.")
     log: LogSettings
+    telemetry: TelemetrySettings
     features: FeatureFlags
     secrets: ProviderSecrets = ProviderSecrets()
 

@@ -73,7 +73,7 @@ python_version = "3.12"
 strict = true
 warn_unreachable = true
 files = ["packages"]
-mypy_path = "packages/core/src"
+mypy_path = ["packages/core/src", "packages/core/tests"]
 explicit_package_bases = true
 plugins = ["pydantic.mypy"]
 
@@ -85,6 +85,7 @@ warn_required_dynamic_aliases = true
 # ---------------------------------------------------------------- pytest
 [tool.pytest.ini_options]
 testpaths = ["packages"]
+pythonpath = ["packages/core/tests"]
 addopts = [
     "--strict-markers",
     "--strict-config",

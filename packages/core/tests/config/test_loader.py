@@ -11,6 +11,10 @@ MakeConfigDir = Callable[[str, dict[str, str]], Path]
 BASE = """\
 instance_name: base
 log: {level: INFO, format: json}
+telemetry:
+  service_name: inu
+  traces: {exporter: none, sample_ratio: 1.0}
+  metrics: {exporter: none, export_interval_ms: 1000}
 features: {private_mode: false, cloud_llm: false}
 """
 
@@ -132,6 +136,27 @@ def test_missing_required_value_is_rejected(make_config_dir: MakeConfigDir) -> N
     root = make_config_dir("log: {level: INFO, format: json}\n", {"dev": ""})
     with pytest.raises(ConfigError, match=r"features: Field required"):
         load_settings(profile="dev", config_dir=root)
+
+
+def test_otlp_exporter_requires_an_endpoint(make_config_dir: MakeConfigDir) -> None:
+    root = make_config_dir(BASE, {"dev": "telemetry: {traces: {exporter: otlp}}\n"})
+    with pytest.raises(ConfigError, match=r"telemetry\.traces.*otlp_endpoint is required"):
+        load_settings(profile="dev", config_dir=root)
+
+
+def test_sample_ratio_is_bounded(make_config_dir: MakeConfigDir) -> None:
+    root = make_config_dir(BASE, {"dev": "telemetry: {traces: {sample_ratio: 1.5}}\n"})
+    with pytest.raises(ConfigError, match=r"telemetry\.traces\.sample_ratio"):
+        load_settings(profile="dev", config_dir=root)
+
+
+def test_config_error_belongs_to_the_taxonomy() -> None:
+    error = ConfigError("bad")
+    assert error.attributes() == {
+        "error.code": "config.invalid",
+        "error.category": "config",
+        "error.retryable": False,
+    }
 
 
 def test_malformed_yaml_names_the_file(make_config_dir: MakeConfigDir) -> None:
