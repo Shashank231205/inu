@@ -1,13 +1,20 @@
 [tool.uv.workspace]
 members = ["packages/*"]
 
+[tool.uv]
+# The speech engines in `lab` are heavy and only needed for benchmarking on the laptop.
+# Locally they install by default; CI opts out with --no-group lab.
+default-groups = ["dev", "lab"]
+
 [tool.uv.sources]
 inu-core = { workspace = true }
 inu-voice = { workspace = true }
+inu-lab = { workspace = true }
 
 [dependency-groups]
 dev = [
     "inu-core",
+    "inu-lab",
     "inu-voice",
     "mypy>=2.4.0",
     "poethepoet>=0.48.0",
@@ -18,12 +25,19 @@ dev = [
     "ruff>=0.16.10",
     "types-pyyaml>=6.0.12.20260906",
 ]
+lab = [
+    "faster-whisper>=1.2.1",
+    "kokoro-onnx>=0.6.1",
+    "moonshine-voice>=0.1.5",
+    "onnx-asr[cpu,hub]>=0.12.0",
+    "piper-tts>=1.8.0",
+]
 
 # ---------------------------------------------------------------- tasks
 [tool.poe.tasks]
 fmt = { shell = "ruff format . && ruff check --fix .", help = "Format and autofix" }
 lint = { shell = "ruff format --check . && ruff check .", help = "Lint without changing files" }
-typecheck = { sequence = ["mypy packages/core", "mypy packages/voice"], default_item_type = "cmd", help = "Strict type check, one package per run (each has its own conftest)" }
+typecheck = { sequence = ["mypy packages/core", "mypy packages/voice", "mypy packages/lab"], default_item_type = "cmd", help = "Strict type check, one package per run (each has its own conftest)" }
 test = { cmd = "pytest", help = "Run tests with coverage" }
 check = { sequence = ["lint", "typecheck", "test"], help = "Everything CI runs" }
 hooks = { cmd = "pre-commit install --install-hooks --hook-type pre-commit --hook-type commit-msg", help = "Install git hooks" }
@@ -75,13 +89,21 @@ ignore = ["TRY003"]
 python_version = "3.12"
 strict = true
 warn_unreachable = true
-mypy_path = ["packages/core/src", "packages/core/tests", "packages/voice/src", "packages/voice/tests"]
+mypy_path = [
+    "packages/core/src", "packages/core/tests",
+    "packages/voice/src", "packages/voice/tests",
+    "packages/lab/src", "packages/lab/tests",
+]
 explicit_package_bases = true
 plugins = ["pydantic.mypy"]
 
 [[tool.mypy.overrides]]
 # Ships no type information.
-module = ["sounddevice", "soxr"]
+module = [
+    "sounddevice", "soxr", "soundfile", "pyarrow", "pyarrow.*", "onnxruntime",
+    "faster_whisper", "moonshine_voice", "moonshine_voice.*", "kokoro_onnx", "piper",
+    "whisper_normalizer", "whisper_normalizer.*",
+]
 ignore_missing_imports = true
 
 [tool.pydantic-mypy]
@@ -92,7 +114,7 @@ warn_required_dynamic_aliases = true
 # ---------------------------------------------------------------- pytest
 [tool.pytest.ini_options]
 testpaths = ["packages"]
-pythonpath = ["packages/core/tests", "packages/voice/tests"]
+pythonpath = ["packages/core/tests", "packages/voice/tests", "packages/lab/tests"]
 addopts = [
     "--strict-markers",
     "--strict-config",
@@ -112,6 +134,6 @@ filterwarnings = [
 
 [tool.coverage.run]
 branch = true
-source = ["inu", "inu_voice"]
+source = ["inu", "inu_voice", "inu_lab"]
 # Needs real audio hardware; covered by the hardware test and `inu audio bench`.
 omit = ["*/inu_voice/audio/sounddevice_backend.py"]

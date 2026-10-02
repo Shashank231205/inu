@@ -9,6 +9,10 @@ on:
 permissions:
   contents: read
 
+env:
+  # Benchmark-only speech engines: large, laptop-only, not needed to test INU.
+  UV_NO_GROUP: lab
+
 concurrency:
   group: ci-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true

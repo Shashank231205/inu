@@ -13,8 +13,10 @@ Status: ✅ done · 🟨 in progress or partly done · ⬜ not started
 | | |
 |---|---|
 | Last completed phase | **5: Audio I/O engine** (commit `0ce7aca`) |
-| Current phase | **6: Model bake-off**, not started yet |
-| Next concrete step | Research which current LLM, STT and TTS models fit a 4 GB GPU, then build the `inu bench` harness (see Phase 6) and download every candidate |
+| Current phase | **6: Model bake-off**, in progress |
+| Done in Phase 6 | `packages/lab` harness: `inu bench llm\|stt\|tts`, configs in `benchmarks/*.yaml`, persona prompt in `prompts/inu-system.md`. 13 LLMs pulled in Ollama. STT/TTS engines installed (`lab` uv group). |
+| Next concrete step | 1) `uv run inu --profile laptop bench llm` (realistic conversations), then the same with `--option num_gpu=99` for the 3–4B models. 2) `bench stt` (LibriSpeech; Svarah once the owner runs `uv run hf auth login`). 3) `bench tts`, then pick the TTS judge from the STT results. 4) Write ADR 0007 + `docs/benchmarks/phase-06.md`. |
+| Findings so far | Ollama keeps ~1 GiB of VRAM headroom, so 3–4B models land 50–88% on the GPU (test `num_gpu=99`). `lfm2.5:8b` crashes llama-server on Windows (`0xc0000409`). `qwen3:4b` ignores `think: false` (disqualified for voice). soxr LQ, GIL 1 ms: see ADR 0006. |
 | Partly done | Phase 3b (observability stack) needs Docker. Phase 4's first CI run needs the GitHub push. |
 
 ### Waiting on the owner
@@ -23,6 +25,7 @@ Status: ✅ done · 🟨 in progress or partly done · ⬜ not started
 |---|---|
 | GitHub repo public or private. **The owner said "push later": don't push until asked.** | Phase 4 first run, branch protection |
 | Hinglish or English only (OQ-1) | Phase 6 STT/TTS picks, Phase 39 |
+| Hugging Face login: terms accepted for `ai4bharat/Svarah`; still needs `uv run hf auth login` with a read token | Indian-accent STT scores in Phase 6 |
 | Install WSL2 + Docker Desktop (admin needed) | Phase 3b, Phase 17 onward (Postgres) |
 | Back up the age private key (`%APPDATA%\sops\age\keys.txt`) | Nothing, but losing it loses the secrets |
 | Create accounts when needed: Groq, Kaggle, Modal, Oracle Cloud, Tailscale, Telegram | Phases 12, 30, 35 |

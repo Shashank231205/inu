@@ -1,0 +1,67 @@
+# TTS bake-off (Phase 6). Run: uv run inu bench tts [--engines a,b]
+# Listen to the results in data/benchmarks/tts-samples/<engine>/.
+models_dir: data/models/tts
+samples_dir: data/benchmarks/tts-samples
+warmup: 1
+
+# Intelligibility judge: an engine from the STT benchmark transcribes each reply.
+judge:
+  stt_config: benchmarks/stt.yaml
+  engine: whisper-small.en
+
+replies:
+  - Yes?
+  - Canberra is the capital of Australia.
+  - You have ninety-five minutes before your meeting, so there's plenty of time.
+  - Your timer is set for seven minutes.
+  - It's twenty-four degrees and sunny in Pune right now, with a light breeze from the west.
+  - I couldn't reach the weather service. Want me to try again in a minute?
+  - A black hole is a region where gravity is so strong that nothing, not even light, can escape.
+  - Done. I've opened Spotify and started your focus playlist.
+
+engines:
+  - name: kokoro-onnx-fp32-george
+    kind: kokoro_onnx
+    voice: bm_george
+    language: en-gb
+    urls:
+      - https://github.com/thewh1teagle/kokoro-onnx/releases/download/model-files-v1.0/kokoro-v1.0.onnx
+      - https://github.com/thewh1teagle/kokoro-onnx/releases/download/model-files-v1.0/voices-v1.0.bin
+  - name: kokoro-onnx-int8-george
+    kind: kokoro_onnx
+    voice: bm_george
+    language: en-gb
+    urls:
+      - https://github.com/thewh1teagle/kokoro-onnx/releases/download/model-files-v1.0/kokoro-v1.0.int8.onnx
+      - https://github.com/thewh1teagle/kokoro-onnx/releases/download/model-files-v1.0/voices-v1.0.bin
+  - name: kokoro-onnx-int8-michael
+    kind: kokoro_onnx
+    voice: am_michael
+    language: en-us
+    urls:
+      - https://github.com/thewh1teagle/kokoro-onnx/releases/download/model-files-v1.0/kokoro-v1.0.int8.onnx
+      - https://github.com/thewh1teagle/kokoro-onnx/releases/download/model-files-v1.0/voices-v1.0.bin
+  - name: piper-alan-medium
+    kind: piper
+    voice: en_GB-alan-medium
+    language: en-gb
+    hf_repo: rhasspy/piper-voices
+    hf_files:
+      - en/en_GB/alan/medium/en_GB-alan-medium.onnx
+      - en/en_GB/alan/medium/en_GB-alan-medium.onnx.json
+  - name: piper-ryan-high
+    kind: piper
+    voice: en_US-ryan-high
+    language: en-us
+    hf_repo: rhasspy/piper-voices
+    hf_files:
+      - en/en_US/ryan/high/en_US-ryan-high.onnx
+      - en/en_US/ryan/high/en_US-ryan-high.onnx.json
+  - name: moonshine-kokoro-george
+    kind: moonshine
+    voice: kokoro_bm_george
+    language: en-gb
+  - name: moonshine-piper-alan
+    kind: moonshine
+    voice: piper_en_GB-alan-medium
+    language: en-gb
