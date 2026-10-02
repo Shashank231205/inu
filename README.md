@@ -4,7 +4,7 @@ A personal AI system you talk to. Say its name and it answers fast enough to fee
 
 Local first, free to run, built like production software.
 
-> **Status:** Phase 3 of 77, Foundations. See the [roadmap](docs/roadmap.md).
+> **Status:** Phase 4 of 77, Foundations. See the [roadmap](docs/roadmap.md).
 
 ## Architecture
 
@@ -25,6 +25,7 @@ The reasoning is in [ADR 0002](docs/adr/0002-hybrid-compute-topology.md).
 - [Roadmap](docs/roadmap.md): 77 phases in 14 stages
 - [Configuration](docs/configuration.md): layers, profiles and encrypted secrets
 - [Observability](docs/observability.md): turns, stages, logs, traces, metrics, error taxonomy
+- [CI/CD](docs/ci.md): workflows, supply-chain rules, releases
 - [Architecture decisions](docs/adr/)
 
 ## Development

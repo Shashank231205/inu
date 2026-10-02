@@ -21,7 +21,7 @@ The immutable event log is built in Stage D, not Stage N. That way every event s
 | 1 | Monorepo and toolchain | ✅ |
 | 2 | Config and secrets | ✅ |
 | 3 | Observability base: (a) in-process logs, traces, metrics ✅ · (b) collector + Grafana stack, needs Docker | 🟨 |
-| 4 | CI/CD | ⬜ |
+| 4 | CI/CD: workflows written and linted ✅ · first run on GitHub, needs the push | 🟨 |
 
 ## B: Real-time voice
 | # | Phase | Status |
