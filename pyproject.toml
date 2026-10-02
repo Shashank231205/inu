@@ -1,0 +1,81 @@
+[tool.uv.workspace]
+members = ["packages/*"]
+
+[tool.uv.sources]
+inu-core = { workspace = true }
+
+[dependency-groups]
+dev = [
+    "inu-core",
+    "mypy>=2.4.0",
+    "poethepoet>=0.48.0",
+    "pre-commit>=4.6.2",
+    "pytest>=9.1.1",
+    "pytest-asyncio>=1.4.0",
+    "pytest-cov>=7.1.0",
+    "ruff>=0.16.10",
+]
+
+# ---------------------------------------------------------------- tasks
+[tool.poe.tasks]
+fmt = { shell = "ruff format . && ruff check --fix .", help = "Format and autofix" }
+lint = { shell = "ruff format --check . && ruff check .", help = "Lint without changing files" }
+typecheck = { cmd = "mypy", help = "Strict type check" }
+test = { cmd = "pytest", help = "Run tests with coverage" }
+check = { sequence = ["lint", "typecheck", "test"], help = "Everything CI runs" }
+hooks = { cmd = "pre-commit install --install-hooks --hook-type pre-commit --hook-type commit-msg", help = "Install git hooks" }
+
+# ---------------------------------------------------------------- ruff
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+src = ["packages/*/src", "packages/*/tests"]
+
+[tool.ruff.lint]
+select = [
+    "E", "W", "F",  # pycodestyle, pyflakes
+    "I",            # import order
+    "N",            # naming
+    "UP",           # modern syntax
+    "B",            # likely bugs
+    "A",            # shadowed builtins
+    "C4",           # comprehensions
+    "SIM",          # simplifications
+    "RET",          # return hygiene
+    "PTH",          # pathlib over os.path
+    "ASYNC",        # asyncio pitfalls
+    "S",            # security
+    "BLE",          # blind except
+    "TRY",          # exception hygiene
+    "PERF",         # performance anti-patterns
+    "RUF",
+]
+
+[tool.ruff.lint.per-file-ignores]
+"**/tests/**" = ["S101"]
+
+# ---------------------------------------------------------------- mypy
+[tool.mypy]
+python_version = "3.12"
+strict = true
+warn_unreachable = true
+files = ["packages"]
+mypy_path = "packages/core/src"
+explicit_package_bases = true
+
+# ---------------------------------------------------------------- pytest
+[tool.pytest.ini_options]
+testpaths = ["packages"]
+addopts = [
+    "--strict-markers",
+    "--strict-config",
+    "--import-mode=importlib",
+    "--cov=inu",
+    "--cov-report=term-missing",
+    "--cov-fail-under=85",
+]
+asyncio_mode = "auto"
+
+[tool.coverage.run]
+branch = true
+source = ["inu"]

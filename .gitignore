@@ -1,0 +1,39 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+build/
+dist/
+*.egg-info/
+
+# Tooling caches
+.mypy_cache/
+.ruff_cache/
+.pytest_cache/
+.coverage
+coverage.xml
+htmlcov/
+
+# Secrets: only SOPS-encrypted files are committed
+.env
+.env.*
+!.env.example
+*.age.key
+secrets/*.dec.*
+
+# Local data, models and recordings
+data/
+models/
+recordings/
+*.gguf
+*.safetensors
+*.onnx
+*.wav
+
+# Editors and OS
+.idea/
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+.DS_Store
+Thumbs.db
