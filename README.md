@@ -4,7 +4,7 @@ A personal AI system you talk to. Say its name and it answers fast enough to fee
 
 Local first, free to run, built like production software.
 
-> **Status:** Phase 1 of 77, Foundations. See the [roadmap](docs/roadmap.md).
+> **Status:** Phase 2 of 77, Foundations. See the [roadmap](docs/roadmap.md).
 
 ## Architecture
 
@@ -23,11 +23,12 @@ The reasoning is in [ADR 0002](docs/adr/0002-hybrid-compute-topology.md).
 - [Requirements](docs/requirements.md): functional and non-functional, with measurable targets
 - [Threat model](docs/threat-model.md): STRIDE per component
 - [Roadmap](docs/roadmap.md): 77 phases in 14 stages
+- [Configuration](docs/configuration.md): layers, profiles and encrypted secrets
 - [Architecture decisions](docs/adr/)
 
 ## Development
 
-Requires [uv](https://docs.astral.sh/uv/). It installs the right Python version on its own.
+Requires [uv](https://docs.astral.sh/uv/), which installs the right Python version on its own. Loading secrets also requires [SOPS](https://github.com/getsops/sops) and [age](https://github.com/FiloSottile/age).
 
 ```sh
 uv sync                 # create the environment
@@ -43,6 +44,8 @@ Commits follow [Conventional Commits](https://www.conventionalcommits.org/). A c
 
 ```
 packages/core/   core library: domain types, interfaces, orchestration
+config/          base.yaml (all defaults) and per-machine profiles
+secrets/         SOPS-encrypted secrets, one file per profile
 docs/            vision, requirements, threat model, roadmap, ADRs
 ```
 

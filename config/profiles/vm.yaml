@@ -1,0 +1,2 @@
+# Always-on VM: API, database, workers. Logs are shipped as JSON.
+instance_name: vm

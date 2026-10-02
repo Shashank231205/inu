@@ -1,0 +1,5 @@
+# Owner's laptop: runs the real-time voice loop.
+instance_name: laptop
+
+log:
+  format: console

@@ -1,0 +1,6 @@
+# Files under secrets/ are encrypted to these age recipients.
+# Add a recipient (and run `sops updatekeys <file>`) to give another machine access.
+creation_rules:
+  # Either separator, so the rule matches on Windows and Linux.
+  - path_regex: secrets[/\\][^/\\]+\.enc\.env$
+    age: age1wqqv5wadt36ddxu2f9l707rg5kqnn9weha4007wkx0q0tz7524jq9c2vqd # pragma: allowlist secret (public key)

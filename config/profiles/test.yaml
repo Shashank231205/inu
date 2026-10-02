@@ -1,0 +1,10 @@
+# Automated tests and CI. Never talks to cloud providers.
+instance_name: test
+
+log:
+  level: DEBUG
+  format: console
+
+features:
+  private_mode: true
+  cloud_llm: false

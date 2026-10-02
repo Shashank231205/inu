@@ -29,7 +29,8 @@ repos:
     hooks:
       - id: detect-secrets
         args: [--baseline, .secrets.baseline]
-        exclude: uv\.lock
+        # SOPS files are ciphertext; the guards below check they stay that way.
+        exclude: ^(uv\.lock|secrets/.*\.enc\.env)$
 
   - repo: https://github.com/compilerla/conventional-pre-commit
     rev: v4.4.0
@@ -39,6 +40,17 @@ repos:
 
   - repo: local
     hooks:
+      - id: sops-values-encrypted
+        name: secrets files hold only encrypted values
+        language: pygrep
+        entry: '^INU_\w+=(?!ENC\[).+$'
+        files: ^secrets/.*\.enc\.env$
+      - id: sops-metadata-present
+        name: secrets files carry SOPS metadata
+        language: pygrep
+        entry: '^sops_mac='
+        args: [--negate]
+        files: ^secrets/.*\.enc\.env$
       - id: mypy
         name: mypy (strict)
         entry: uv run mypy

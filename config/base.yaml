@@ -1,0 +1,14 @@
+# Defaults shared by every profile. This file is the only place defaults live.
+# Precedence, highest first: INU_* env vars > .env > secrets dir > profile > this file.
+# Env var form: nested keys joined by "__", e.g. INU_LOG__LEVEL=DEBUG.
+
+instance_name: inu
+
+log:
+  level: INFO
+  format: json
+
+features:
+  private_mode: false
+  # Enabled per profile once a provider key exists in its secrets file.
+  cloud_llm: false

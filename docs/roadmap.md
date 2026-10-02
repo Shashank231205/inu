@@ -19,7 +19,7 @@ The immutable event log is built in Stage D, not Stage N. That way every event s
 |---|---|---|
 | 0 | Vision, requirements, threat model | ✅ |
 | 1 | Monorepo and toolchain | ✅ |
-| 2 | Config and secrets | ⬜ |
+| 2 | Config and secrets | ✅ |
 | 3 | Observability base | ⬜ |
 | 4 | CI/CD | ⬜ |
 
