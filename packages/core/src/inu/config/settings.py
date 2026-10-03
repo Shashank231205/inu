@@ -6,6 +6,7 @@ setting. Only secrets are optional, because a fresh clone has none.
 """
 
 from enum import StrEnum
+from pathlib import Path
 from typing import Any, Self
 
 from pydantic import (
@@ -123,6 +124,26 @@ class AudioSettings(_Section):
         return self
 
 
+class NetworkSettings(_Section):
+    system_trust_store: bool = Field(
+        description="Verify TLS against the OS trust store instead of certifi's bundle. "
+        "Needed where antivirus or a proxy re-signs HTTPS traffic."
+    )
+    download_timeout_s: float = Field(gt=0, description="Connect and per-read timeout.")
+
+
+class ModelAsset(_Section):
+    """A model file fetched once from a pinned URL and verified by SHA-256 on download.
+
+    Put the version in `path`, so changing the pin fetches a new file instead of
+    trusting an old one.
+    """
+
+    path: Path = Field(description="Relative to `data_dir`.")
+    url: HttpUrl
+    sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
+
+
 class FeatureFlags(_Section):
     private_mode: bool = Field(description="Keep every request on this machine (FR-B3).")
     cloud_llm: bool = Field(description="Allow routing requests to cloud LLM providers.")
@@ -164,6 +185,8 @@ class Settings(BaseSettings):
 
     profile: str = Field(min_length=1)
     instance_name: str = Field(min_length=1, description="Identifies this device in traces.")
+    data_dir: Path = Field(description="Models and local state. Relative to the working dir.")
+    network: NetworkSettings
     log: LogSettings
     telemetry: TelemetrySettings
     audio: AudioSettings

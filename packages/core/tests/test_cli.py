@@ -56,6 +56,18 @@ def test_diag_emits_one_turn_with_every_stage(
     assert "Emitted diagnostic turn" in capsys.readouterr().out
 
 
+def test_diag_can_emit_several_turns(
+    otel: OTel, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    monkeypatch.setattr(cli, "init_observability", build_telemetry)
+
+    assert main(["diag", "--profile", "test", "--turns", "3", "--interval-ms", "1"]) == 0
+
+    names = [span.name for span in otel.spans.get_finished_spans()]
+    assert names.count("turn") == 3
+    assert capsys.readouterr().out.count("Emitted diagnostic turn") == 3
+
+
 def test_profile_works_before_or_after_the_command(capsys: pytest.CaptureFixture[str]) -> None:
     assert main(["--profile", "vm", "config", "check"]) == 0
     assert main(["config", "check", "--profile", "vm"]) == 0

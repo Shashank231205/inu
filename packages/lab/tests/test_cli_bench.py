@@ -130,7 +130,6 @@ def test_stt_runs_engines_on_prepared_datasets(
             raise OSError("offline")
         return root / name
 
-    monkeypatch.setattr(bench_cli, "use_system_trust_store", lambda: None)
     monkeypatch.setattr(stt, "build_engine", build)
     monkeypatch.setattr(bench_cli, "prepare", fake_prepare)
 

@@ -81,6 +81,43 @@ INU_TELEMETRY__TRACES__EXPORTER=console uv run inu diag --profile laptop
 
 This emits one synthetic turn with the stages `stt`, `route`, `llm` and `tts`, prints its spans, and finishes with the turn id.
 
-## Backend stack (Phase 3b, pending)
+## Backend stack
 
-An OpenTelemetry Collector feeding Grafana Tempo (traces), Prometheus (metrics) and Grafana (dashboards) will be added as a docker-compose stack once Docker is available. Application code won't change; only the exporter settings will.
+Native Windows processes, no containers ([ADR 0007](adr/0007-native-observability-stack.md)):
+
+| Component | Role | Address |
+|---|---|---|
+| Prometheus 3.15 | Metrics, received over OTLP; keeps exemplars (trace IDs on histogram samples) | http://127.0.0.1:9090 |
+| Jaeger 2.21 | Traces, received over OTLP; in memory | UI http://127.0.0.1:16686, OTLP 4317 (gRPC) / 4318 (HTTP) |
+| Grafana 13.2 | Dashboards, provisioned from `deploy/observability/grafana/` | http://127.0.0.1:3000 |
+
+```powershell
+uv run inu obs up        # first run downloads ~650 MB, verifies SHA-256, then starts all three
+uv run inu obs status
+uv run inu obs down
+```
+
+`obs up` prints the four `INU_TELEMETRY__*` variables to set in the shell that runs INU. Releases, ports and paths are in `deploy/observability/stack.yaml`; downloads resume if interrupted.
+
+**Dashboards** (folder *INU* in Grafana):
+
+- **Turn latency:** p50 and p95 per stage and for the whole turn, against the NFR-1 line, plus outcomes per stage. Exemplar dots on the latency graphs open the trace of that turn.
+- **Audio health:** xruns by direction (input/output) and source (buffer/device), and stream recoveries.
+
+**Metric names in Prometheus.** OTLP names are translated: dots become underscores and the unit becomes a suffix.
+
+| OpenTelemetry | Prometheus |
+|---|---|
+| `inu.stage.duration` (ms) | `inu_stage_duration_milliseconds_bucket` / `_sum` / `_count`, labels `inu_stage`, `inu_outcome` |
+| `inu.turn.duration` (ms) | `inu_turn_duration_milliseconds_*` |
+| `inu.audio.xruns` | `inu_audio_xruns_total`, labels `direction`, `source` |
+| `inu.audio.reconnects` | `inu_audio_reconnects_total` |
+| resource `service.instance.id` | `instance` label (`laptop`, `vm`) |
+
+**Known limits:**
+
+- Grafana 13's Jaeger plugin still *searches* through Jaeger's removed `/api/traces`, so search traces in the Jaeger UI. Opening a trace by ID (exemplars, Explore) works in Grafana.
+- One-shot commands export a single sample per process, which is not enough for `rate()`. Use `inu diag --turns 60 --interval-ms 250` to see the dashboards move.
+- The OTel SDK's default histogram buckets (0, 5, 10, 25, 50, 75, 100, 250, 500, 750, 1000 ms, ...) are coarse below 25 ms. Latency-tuned buckets come with Phase 11.
+
+**Checked on the laptop (2026-10-03):** a 60-turn `diag` run appeared as Jaeger traces (turn + 4 stage spans) and Prometheus histograms; every dashboard panel returned data through Grafana's query API, exemplars carried trace IDs that open in Jaeger, and a 10 s `inu audio bench` filled the audio dashboard (0 xruns).

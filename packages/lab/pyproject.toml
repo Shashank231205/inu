@@ -1,7 +1,7 @@
 [project]
 name = "inu-lab"
 version = "0.1.0"
-description = "INU benchmarks and experiments. Development only; never deployed."
+description = "INU development tools: benchmarks and the local observability stack. Never deployed."
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
@@ -10,6 +10,8 @@ dependencies = [
     "inu-core",
     "jiwer>=4.0.0",
     "numpy>=2.5.3",
+    "psutil>=7.2.2",
+    "pyarrow>=21.0.0",  # Hugging Face datasets ship as parquet
     "soundfile>=0.14.0",
     "truststore>=0.10.4",
     "whisper-normalizer>=0.1.15",
@@ -17,6 +19,7 @@ dependencies = [
 
 [project.entry-points."inu.commands"]
 bench = "inu_lab.cli:BenchCommand"
+obs = "inu_lab.obs:ObsCommand"
 
 [build-system]
 requires = ["uv_build>=0.12,<0.13"]

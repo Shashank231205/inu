@@ -1,0 +1,53 @@
+# Jaeger v2 all-in-one, trimmed to what INU uses: OTLP in, in-memory store, query UI.
+# Addresses come from stack.yaml through environment variables; all bind to 127.0.0.1.
+service:
+  extensions: [jaeger_storage, jaeger_query, healthcheckv2]
+  pipelines:
+    traces:
+      receivers: [otlp]
+      processors: [batch]
+      exporters: [jaeger_storage_exporter]
+  telemetry:
+    resource:
+      attributes:
+        - name: service.name
+          value: jaeger
+    metrics:
+      level: none
+    traces:
+      level: none  # otherwise Jaeger traces itself to localhost:4317
+    logs:
+      level: info
+
+extensions:
+  healthcheckv2:
+    use_v2: true
+    http:
+      endpoint: ${env:INU_JAEGER_HEALTH_ADDR}
+
+  jaeger_query:
+    storage:
+      traces: memstore
+    http:
+      endpoint: ${env:INU_JAEGER_UI_ADDR}
+
+  jaeger_storage:
+    backends:
+      memstore:
+        memory:
+          max_traces: 100000
+
+receivers:
+  otlp:
+    protocols:
+      grpc:
+        endpoint: ${env:INU_JAEGER_OTLP_GRPC_ADDR}
+      http:
+        endpoint: ${env:INU_JAEGER_OTLP_HTTP_ADDR}
+
+processors:
+  batch:
+
+exporters:
+  jaeger_storage_exporter:
+    trace_storage: memstore

@@ -13,14 +13,16 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Final, Literal
 
-import httpx
 import numpy as np
 import numpy.typing as npt
 import soundfile as sf
 import soxr
 from pydantic import BaseModel, ConfigDict, Field
 
+from inu.assets import fetch
+
 TARGET_RATE: Final = 16_000
+DOWNLOAD_TIMEOUT_S: Final = 60  # connect and per-read; dev tooling, not runtime config
 
 type Samples = npt.NDArray[np.float32]
 MANIFEST = "manifest.jsonl"
@@ -128,14 +130,7 @@ def download(url: str, directory: Path) -> Path:
     path = directory / url.rsplit("/", 1)[-1]
     if path.is_file():
         return path
-    partial = path.with_suffix(path.suffix + ".part")
-    with httpx.stream("GET", url, follow_redirects=True, timeout=60) as response:
-        response.raise_for_status()
-        with partial.open("wb") as out:
-            for chunk in response.iter_bytes(1 << 20):
-                out.write(chunk)
-    partial.replace(path)
-    return path
+    return fetch(url, path, timeout_s=DOWNLOAD_TIMEOUT_S)
 
 
 # ------------------------------------------------------------------ subset

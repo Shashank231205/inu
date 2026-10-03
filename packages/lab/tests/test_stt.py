@@ -3,7 +3,6 @@ import json
 import tarfile
 from pathlib import Path
 
-import httpx
 import numpy as np
 import pytest
 import soundfile as sf
@@ -155,27 +154,23 @@ def test_librispeech_archive_is_read_into_candidates(tmp_path: Path) -> None:
     assert prepare("libri", spec(), tmp_path) == target  # second call reuses the manifest
 
 
-def test_download_streams_to_a_partial_file_then_renames(
+def test_download_names_the_file_after_the_url_and_reuses_it(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
-    class FakeResponse:
-        def __enter__(self) -> "FakeResponse":
-            return self
+    fetched: list[tuple[str, Path]] = []
 
-        def __exit__(self, *exc: object) -> None:
-            return None
+    def fake_fetch(url: str, target: Path, *, timeout_s: float) -> Path:
+        fetched.append((url, target))
+        target.write_bytes(b"abcdef")
+        return target
 
-        def raise_for_status(self) -> None:
-            return None
+    monkeypatch.setattr(ds, "fetch", fake_fetch)  # resuming is tested in inu.assets
 
-        def iter_bytes(self, size: int) -> list[bytes]:
-            return [b"abc", b"def"]
+    path = ds.download("https://example.invalid/data.tar.gz", tmp_path / "dl")
 
-    monkeypatch.setattr(httpx, "stream", lambda *a, **k: FakeResponse())
-    path = ds.download("https://example.invalid/data.tar.gz", tmp_path)
-    assert path.read_bytes() == b"abcdef"
-    assert not list(tmp_path.glob("*.part"))
-    assert ds.download("https://example.invalid/data.tar.gz", tmp_path) == path  # cached
+    assert path == tmp_path / "dl" / "data.tar.gz"
+    assert ds.download("https://example.invalid/data.tar.gz", tmp_path / "dl") == path
+    assert len(fetched) == 1
 
 
 def test_manifest_round_trip(tmp_path: Path) -> None:

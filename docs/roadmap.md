@@ -8,16 +8,94 @@ Status: ✅ done · 🟨 in progress or partly done · ⬜ not started
 
 ## Where we stand
 
-**Last updated:** 2026-10-02
+**Last updated:** 2026-10-02 (written just before a context compaction)
+
+**Goal right now:** finish **Phase 3b** and **Phase 6** to 100%, then build **Phases 7 → 14** in order.
 
 | | |
 |---|---|
-| Last completed phase | **5: Audio I/O engine** (commit `0ce7aca`) |
-| Current phase | **6: Model bake-off**, in progress |
-| Done in Phase 6 | `packages/lab` harness: `inu bench llm\|stt\|tts`, configs in `benchmarks/*.yaml`, persona prompt in `prompts/inu-system.md`. 13 LLMs pulled in Ollama. STT/TTS engines installed (`lab` uv group). |
-| Next concrete step | 1) `uv run inu --profile laptop bench llm` (realistic conversations), then the same with `--option num_gpu=99` for the 3–4B models. 2) `bench stt` (LibriSpeech; Svarah once the owner runs `uv run hf auth login`). 3) `bench tts`, then pick the TTS judge from the STT results. 4) Write ADR 0007 + `docs/benchmarks/phase-06.md`. |
-| Findings so far | Ollama keeps ~1 GiB of VRAM headroom, so 3–4B models land 50–88% on the GPU (test `num_gpu=99`). `lfm2.5:8b` crashes llama-server on Windows (`0xc0000409`). `qwen3:4b` ignores `think: false` (disqualified for voice). soxr LQ, GIL 1 ms: see ADR 0006. |
-| Partly done | Phase 3b (observability stack) needs Docker. Phase 4's first CI run needs the GitHub push. |
+| Last commit | `30c16cb` feat(lab): add model bake-off harness. Phases 0, 1, 2 and 5 are ✅. |
+| In progress | **3b** (native observability stack, code written, never run) and **6** (benchmarks running or finished). |
+| Then | Phase 7 → 8 → 9 → 10 → 11 → 12 → 13 → 14, following each phase's How steps below. |
+| Blocked by owner | Phase 4's first CI run (needs the GitHub push; the owner said "push later"). Everything else in Phase 4 is done. |
+
+### Resume checklist (do these in order)
+
+**A. Check the state**
+1. `cd C:\Users\91913\inu`, then `git status`. Expect **uncommitted 3b files**:
+   - `packages/lab/src/inu_lab/obs.py`
+   - `deploy/observability/**` (`stack.yaml`, `prometheus.yml`, `jaeger.yaml`, `grafana/provisioning/**`)
+   - `packages/lab/pyproject.toml` (`obs` entry point, `psutil`), `pyproject.toml`/`uv.lock` (psutil, types-psutil)
+   - `packages/lab/src/inu_lab/hf_login.py` + `packages/lab/tests/test_hf_login.py`
+   - this file
+2. Run `uv sync`, then `uv run poe check` (161 tests passed at the last green run, before `obs.py` existed).
+
+**B. Phase 6: collect the benchmark results**
+
+A background chain was started at about 21:00 on 2026-10-02:
+1. `bench llm` (all 13 models)
+2. `bench llm --models llama3.2:3b,granite4.1:3b,granite4.2:3b,phi4-mini,qwen3.5:4b,gemma4:e2b-it-qat --option num_gpu=99`
+3. `bench stt` (LibriSpeech + Svarah; the HF login now works as Shashank2312)
+4. `bench tts`
+
+Results land in `benchmarks/results/<timestamp>-{llm,stt,tts}.json`. TTS audio is in `data/benchmarks/tts-samples/`.
+- If any of those files are missing, rerun the missing steps with the same commands (`uv run inu --profile laptop bench …`). Run them **one at a time**: they skew each other.
+- The TTS judge in `benchmarks/tts.yaml` is `whisper-small.en`. Switch it to the most accurate CPU STT engine from the STT results and rerun `bench tts` if it changes.
+- Write **ADR 0008, model picks**, with tables. Pick:
+  - the fast-tier LLM (speed + correct + guardrails + tools)
+  - the deep-tier LLM
+  - whether `num_gpu=99` beats the default placement
+  - STT for the real-time path (CPU)
+  - TTS engine and voice
+- Write `docs/benchmarks/phase-06.md`: the full tables, plus how to rerun.
+- Commit. Mark Phase 6 ✅.
+
+**C. Phase 3b: native observability stack (no WSL, no Docker)**
+1. `uv run inu --profile laptop obs up`. It downloads Prometheus 3.15.0, Jaeger 2.21.0 and Grafana 13.2.3 into `data/tools`, verifies their SHA-256 hashes, starts them, and prints the `$env:INU_TELEMETRY__…` lines.
+   - If Windows Smart App Control blocks a binary, don't bypass it: report it to the owner.
+2. Set those env vars, then run `uv run inu --profile laptop diag`.
+3. Verify through the APIs:
+   - **Jaeger:** `GET http://127.0.0.1:16686/api/traces?service=inu` shows the turn with `stt/route/llm/tts` spans.
+   - **Prometheus:** `GET http://127.0.0.1:9090/api/v1/label/__name__/values` shows the real metric names (expected `inu_stage_duration_milliseconds_bucket` and similar; confirm them).
+   - **Grafana:** `GET http://127.0.0.1:3000/api/health`.
+4. Write the dashboards with the *confirmed* names into `deploy/observability/grafana/dashboards/`:
+   - `turn-latency.json`: p50/p95 per `inu_stage`, turn duration, outcomes.
+   - `audio-health.json`: xruns by direction/source, reconnects.
+   Check them through `POST /api/ds/query` or by loading the dashboard JSON from `/api/dashboards/uid/...`.
+5. Tests for `obs.py`, using fakes (no real downloads):
+   - config load
+   - `render()` templates
+   - checksum mismatch
+   - zip/tar extraction
+   - `running_pid` rejecting a foreign PID
+   - stop / start / status
+   - the CLI
+6. Docs:
+   - Write **ADR 0007, native Windows observability stack** (the owner refuses WSL/Docker; Jaeger replaces Tempo; Prometheus' OTLP receiver replaces the collector).
+   - Update the [observability.md](observability.md) section "Backend stack".
+   - Commit. Mark Phase 3 ✅.
+7. `uv run inu obs down` when finished.
+
+**D. Then Phases 7–14.** Start each phase by reading its How and Done-when, and follow the [definition of done](#definition-of-done-for-every-phase). Use the Phase 6 picks. Phases 12–13 need a Groq API key: ask the owner to create one and add it with `uv run poe secrets-edit laptop`.
+
+### Findings so far (Phase 6)
+
+**Earlier run** (thin prompts, results deleted):
+
+| Model | On GPU | First token | Speed | Notes |
+|---|---|---|---|---|
+| qwen3:1.7b | 100% | 29 ms | 117 tok/s | |
+| qwen3.5:0.8b | 100% | 50 ms | 132 tok/s | Wrong maths |
+| granite4.1 / 4.2 3b | 85–88% | 64–76 ms | ~57 tok/s | 100% tool calls |
+| gemma4:e2b | 38% | 99 ms | 64 tok/s | 100% tool calls |
+| qwen3.5:4b | 50% | 371 ms | 19 tok/s | |
+| granite4.2:8b | | | ~9 tok/s | |
+| qwen3.5:9b | | | ~7.5 tok/s | |
+
+- **VRAM headroom:** Ollama keeps ~1 GiB of VRAM free (log: "free memory target 1024 MiB"; 3.2 GiB free of 4 GiB). That's why 3–4B models land partly on the CPU. Test `num_gpu=99`.
+- **`lfm2.5:8b`** crashes llama-server on Windows (`0xc0000409`, lfm2moe architecture). Excluded.
+- **`qwen3:4b`** ignores `think: false` and speaks its reasoning. Disqualified for voice.
+- **The LLM benchmark** now uses `prompts/inu-system.md` and realistic multi-turn conversations, including long answers and guardrails (the owner asked for this; see `benchmarks/llm.yaml`).
 
 ### Waiting on the owner
 
@@ -25,17 +103,18 @@ Status: ✅ done · 🟨 in progress or partly done · ⬜ not started
 |---|---|
 | GitHub repo public or private. **The owner said "push later": don't push until asked.** | Phase 4 first run, branch protection |
 | Hinglish or English only (OQ-1) | Phase 6 STT/TTS picks, Phase 39 |
-| Hugging Face login: terms accepted for `ai4bharat/Svarah`; still needs `uv run hf auth login` with a read token | Indian-accent STT scores in Phase 6 |
-| Install WSL2 + Docker Desktop (admin needed) | Phase 3b, Phase 17 onward (Postgres) |
 | Back up the age private key (`%APPDATA%\sops\age\keys.txt`) | Nothing, but losing it loses the secrets |
 | Create accounts when needed: Groq, Kaggle, Modal, Oracle Cloud, Tailscale, Telegram | Phases 12, 30, 35 |
 
-### How to resume
+**Settled:**
+- **No WSL, Linux or Docker on the laptop, ever** (the owner's decision). Dev services run natively on Windows. Linux-only services (Postgres + pgvector, Valkey) go on the Oracle VM over Tailscale, or use a native Windows alternative. Decide that in Phase 17's ADR.
+- **Hugging Face:** logged in as Shashank2312 through `uv run python -m inu_lab.hf_login`. The plain `hf auth login` fails silently on this network.
+
+### How to resume (general)
 
 1. Read this section and the [working rules](#working-rules).
-2. Open a shell in `C:\Users\91913\inu` and run `uv run poe check`. It should pass (110 tests at the time of writing).
-3. Find the current phase below and continue from its **How** steps.
-4. When a phase finishes, follow the [definition of done](#definition-of-done-for-every-phase) and **update this section**.
+2. Follow the resume checklist above.
+3. When a phase finishes, follow the [definition of done](#definition-of-done-for-every-phase) and **update this section**.
 
 ---
 
@@ -62,6 +141,9 @@ Status: ✅ done · 🟨 in progress or partly done · ⬜ not started
 | mypy needs one run per package (each test dir has a `conftest.py`) | Always use `uv run poe typecheck`, never bare `mypy` |
 | GPU | RTX 3050 Laptop, **4 GB VRAM**. CPU i7-11800H 8C/16T, 16 GB RAM. Ollama 0.34.3 installed. |
 | Audio | Use WASAPI (laptop profile). Mic: Intel SST array. Speakers: Realtek. |
+| No WSL / Docker / Linux | The owner's firm decision. Native Windows tools only; Linux services go on the VM. |
+| Hugging Face login | `uv run python -m inu_lab.hf_login` (plain `hf auth login` can't verify the token through the HTTPS interception) |
+| Long benchmarks | Run one at a time in the background. Others (or heavy work) running alongside skew the numbers. |
 
 ### Commands
 
@@ -135,23 +217,19 @@ The event log is built in Stage D, so time travel works over the whole history.
   - `inu config show|check`
   - ADR 0004, [configuration.md](configuration.md). Commit `51fa4c3`.
 
-### 3. Observability 🟨
+### 3. Observability ✅
 - **3a, built:**
   - structlog with turn, trace and span ids on every record, plus redaction
   - OpenTelemetry traces and metrics; `turn()` / `stage()` helpers recording span + duration histograms
   - `InuError` taxonomy
   - `inu diag`
   - ADR 0005, [observability.md](observability.md). Commit `9b4e111`.
-- **3b, how (needs Docker):**
-  1. `deploy/observability/docker-compose.yml`:
-     - OpenTelemetry Collector, receiving OTLP/HTTP on `:4318`
-     - Grafana Tempo for traces
-     - Prometheus, scraping the collector's Prometheus exporter
-     - Grafana, with provisioned datasources
-  2. Provision dashboards: **Turn latency** (p50/p95 of `inu.stage.duration` by stage) and **Audio health** (`inu.audio.xruns`, `inu.audio.reconnects`).
-  3. Set the laptop profile's exporters to `otlp` at `http://localhost:4318`.
-  4. Verify: `inu diag` shows up as a trace in Tempo and as histograms in Grafana.
-- **Done when:** one `inu diag` turn is visible end to end in Grafana.
+- **3b, built:** native Windows processes, no containers (the owner refuses WSL/Docker).
+  - Prometheus 3.15 (OTLP receiver, exemplar storage), Jaeger 2.21 (OTLP in, in-memory), Grafana 13.2 with provisioned data sources and two dashboards (turn latency, audio health)
+  - `inu obs up|down|status`: pinned, SHA-256-verified, resumable downloads; detached processes with PID checks
+  - `inu diag --turns N`; `inu audio bench` exports its xrun counters
+  - Verified on the laptop: traces in Jaeger, histograms and exemplars in Prometheus, every dashboard panel returns data. Grafana cannot *search* Jaeger 2.21 (plugin limitation); exemplars link metrics to traces instead.
+  - ADR 0007, [observability.md](observability.md#backend-stack).
 
 ### 4. CI/CD 🟨
 - **Built:**
@@ -180,7 +258,7 @@ The event log is built in Stage D, so time travel works over the whole history.
   - ADR 0006, [audio.md](audio.md). Commit `0ce7aca`.
 - **Results:** at 80% CPU plus GIL load for 30 s: 100% audio delivered, 0 dropouts, capture lag p50/p99 21.4/33.6 ms.
 
-### 6. Model bake-off on the laptop ⬜ ← **current**
+### 6. Model bake-off on the laptop 🟨 ← **current** (resume checklist B)
 - **Goal:** choose the LLM, STT and TTS models with numbers from *this* GPU and CPU.
 - **How:**
   1. **Research current candidates** that fit 4 GB VRAM. Model releases move fast, so check the Ollama library and Hugging Face at the time.
@@ -199,7 +277,7 @@ The event log is built in Stage D, so time travel works over the whole history.
      - **Measure:** time to first audio, real-time factor.
      - **Intelligibility:** round-trip WER (TTS → best STT).
   6. **Combined:** fast LLM on the GPU while STT/TTS run on the CPU at the same time, to measure contention (the real budget).
-  7. Write ADR 0007 with the picks and [docs/benchmarks/phase-06.md](benchmarks/) with the tables.
+  7. Write ADR 0008 with the picks and [docs/benchmarks/phase-06.md](benchmarks/) with the tables. (ADR 0007 is the native observability stack from Phase 3b.)
 - **Done when:** picks are recorded with numbers; the real-time path fits in ≤ 3.6 GB VRAM (NFR-3); a projected latency budget exists.
 
 ### 7. Streaming STT + VAD ⬜
@@ -297,7 +375,7 @@ The event log is built in Stage D, so time travel works over the whole history.
 
 ---
 
-## Stage D: Memory and data platform (needs Docker)
+## Stage D: Memory and data platform (no Docker on the laptop: Postgres runs on the VM or natively, decided in Phase 17's ADR)
 
 ### 17. Schema design and migrations ⬜
 - **How:**

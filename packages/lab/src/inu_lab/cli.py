@@ -23,13 +23,6 @@ def make_llm_backend(config: llm.LlmBenchConfig) -> llm.ChatBackend:
     return llm.OllamaBackend(config.base_url, config.request_timeout_s)
 
 
-def use_system_trust_store() -> None:
-    """Model and dataset downloads go through HTTPS that may be intercepted locally."""
-    import truststore
-
-    truststore.inject_into_ssl()
-
-
 class BenchCommand:
     name = "bench"
     help = "Benchmark candidate models on this machine"
@@ -145,7 +138,6 @@ def run_stt(
     dataset_names = _subset(list(config.datasets), datasets_arg, "datasets")
     if engine_names is None or dataset_names is None:
         return 2
-    use_system_trust_store()
 
     prepared: dict[str, list[Any]] = {}
     for name in dataset_names:
@@ -205,7 +197,6 @@ def run_tts(config_path: Path, engines_arg: str | None, out_dir: Path) -> int:
     engine_names = _subset([e.name for e in config.engines], engines_arg, "engines")
     if engine_names is None:
         return 2
-    use_system_trust_store()
 
     stt_config = stt.SttBenchConfig.load(config.judge.stt_config)
     judge_spec = next((e for e in stt_config.engines if e.name == config.judge.engine), None)

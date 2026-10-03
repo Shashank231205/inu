@@ -1,0 +1,17 @@
+# INU pushes metrics over OTLP (--web.enable-otlp-receiver); nothing is scraped.
+global:
+  evaluation_interval: 15s
+
+otlp:
+  # Keep these resource attributes as labels so dashboards can split by device and build.
+  promote_resource_attributes:
+    - service.instance.id
+    - service.version
+    - deployment.environment.name
+
+storage:
+  tsdb:
+    # OTLP clients send in batches; tolerate slightly late samples.
+    out_of_order_time_window: 30m
+
+scrape_configs: []

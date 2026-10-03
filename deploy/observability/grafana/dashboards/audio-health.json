@@ -1,0 +1,72 @@
+{
+  "uid": "inu-audio-health",
+  "title": "INU: audio health",
+  "description": "Dropouts and stream recoveries of the real-time audio engine (ADR 0006). Any xrun is audible.",
+  "tags": ["inu", "audio"],
+  "timezone": "browser",
+  "schemaVersion": 41,
+  "version": 1,
+  "editable": false,
+  "refresh": "10s",
+  "time": {"from": "now-1h", "to": "now"},
+  "panels": [
+    {
+      "id": 1,
+      "type": "stat",
+      "title": "Xruns in range",
+      "description": "buffer = INU's ring overflowed or ran dry; device = reported by the audio driver.",
+      "gridPos": {"x": 0, "y": 0, "w": 12, "h": 6},
+      "datasource": {"type": "prometheus", "uid": "inu-prometheus"},
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}, {"color": "red", "value": 1}]}
+        },
+        "overrides": []
+      },
+      "options": {"colorMode": "background", "graphMode": "none", "reduceOptions": {"calcs": ["lastNotNull"]}},
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by (direction, source) (increase(inu_audio_xruns_total[$__range]))",
+          "legendFormat": "{{direction}} / {{source}}",
+          "instant": true
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "type": "stat",
+      "title": "Stream recoveries in range",
+      "description": "Reconnects after a lost or stalled stream (device unplugged, driver reset).",
+      "gridPos": {"x": 12, "y": 0, "w": 12, "h": 6},
+      "datasource": {"type": "prometheus", "uid": "inu-prometheus"},
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}, {"color": "orange", "value": 1}]}
+        },
+        "overrides": []
+      },
+      "options": {"colorMode": "background", "graphMode": "none", "reduceOptions": {"calcs": ["lastNotNull"]}},
+      "targets": [
+        {"refId": "A", "expr": "sum(increase(inu_audio_reconnects_total[$__range])) or vector(0)", "instant": true}
+      ]
+    },
+    {
+      "id": 3,
+      "type": "timeseries",
+      "title": "Xrun rate",
+      "gridPos": {"x": 0, "y": 6, "w": 24, "h": 9},
+      "datasource": {"type": "prometheus", "uid": "inu-prometheus"},
+      "fieldConfig": {"defaults": {"unit": "short", "min": 0, "custom": {"drawStyle": "bars"}}, "overrides": []},
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by (direction, source) (increase(inu_audio_xruns_total[$__rate_interval]))",
+          "legendFormat": "{{direction}} / {{source}}"
+        }
+      ]
+    }
+  ]
+}

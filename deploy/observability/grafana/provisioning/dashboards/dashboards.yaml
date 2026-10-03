@@ -1,0 +1,9 @@
+apiVersion: 1
+providers:
+  - name: inu
+    folder: INU
+    type: file
+    disableDeletion: true
+    allowUiUpdates: false
+    options:
+      path: $INU_DASHBOARDS_DIR

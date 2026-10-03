@@ -1,0 +1,85 @@
+# Local observability stack, run natively on Windows by `uv run inu obs up` (ADR 0007).
+# Pinned releases, verified by SHA-256 before use. Everything binds to 127.0.0.1.
+#
+# Template values in args/env: {config} = this directory, {data} = the component's data
+# dir, {install} = its install dir, {exe_dir} = directory of its executable, plus `vars`.
+
+install_dir: data/tools
+run_dir: data/tools/run
+health_timeout_s: 60
+
+vars:
+  prometheus_addr: 127.0.0.1:9090
+  jaeger_ui_addr: 127.0.0.1:16686
+  jaeger_otlp_grpc_addr: 127.0.0.1:4317
+  jaeger_otlp_http_addr: 127.0.0.1:4318
+  jaeger_health_addr: 127.0.0.1:13133
+  grafana_addr: 127.0.0.1
+  grafana_port: "3000"
+
+components:
+  prometheus:
+    url: https://github.com/prometheus/prometheus/releases/download/v3.15.0/prometheus-3.15.0.windows-amd64.zip
+    archive_sha256: 5d333b385557d9adc2ff015d13da9809baccc52fb800a82d1e5c94b79258f87e  # pragma: allowlist secret (public checksum)
+    executable: "*/prometheus.exe"
+    args:
+      - --config.file={config}/prometheus.yml
+      - --storage.tsdb.path={data}/tsdb
+      - --storage.tsdb.retention.time=7d
+      - --web.listen-address={prometheus_addr}
+      - --web.enable-otlp-receiver
+      # Keeps the trace IDs that OpenTelemetry attaches to histogram samples, so a
+      # latency spike in Grafana links straight to the turn that caused it.
+      - --enable-feature=exemplar-storage
+    health_url: http://{prometheus_addr}/-/ready
+
+  jaeger:
+    url: https://github.com/jaegertracing/jaeger/releases/download/v2.21.0/jaeger-2.21.0-windows-amd64.tar.gz
+    # Jaeger publishes checksums of the extracted binaries, not of the archive.
+    executable: "*/jaeger.exe"
+    executable_sha256: d42156cceff213cb24a0595ca5a2de0008de7d09298ddca6e17a464b9ffdaf35  # pragma: allowlist secret (public checksum)
+    args:
+      - --config={config}/jaeger.yaml
+    env:
+      INU_JAEGER_UI_ADDR: "{jaeger_ui_addr}"
+      INU_JAEGER_OTLP_GRPC_ADDR: "{jaeger_otlp_grpc_addr}"
+      INU_JAEGER_OTLP_HTTP_ADDR: "{jaeger_otlp_http_addr}"
+      INU_JAEGER_HEALTH_ADDR: "{jaeger_health_addr}"
+    health_url: http://{jaeger_ui_addr}/
+
+  grafana:
+    url: https://dl.grafana.com/oss/release/grafana-13.2.3.windows-amd64.zip
+    archive_sha256: a208dc3a0a1c237f275490cc9b9219c89c22bc3a0e62ba0fe5642b6e93cb6b7f  # pragma: allowlist secret (public checksum)
+    executable: "*/bin/grafana.exe"
+    args:
+      - server
+      - --homepath={exe_home}
+    env:
+      GF_PATHS_DATA: "{data}"  # created by obs; Grafana does not create it
+      GF_PATHS_LOGS: "{data}/logs"
+      GF_PATHS_PLUGINS: "{data}/plugins"
+      GF_PATHS_PROVISIONING: "{config}/grafana/provisioning"
+      GF_SERVER_HTTP_ADDR: "{grafana_addr}"
+      GF_SERVER_HTTP_PORT: "{grafana_port}"
+      # Local-only dev instance: no login, read-write for whoever is on this machine.
+      GF_AUTH_ANONYMOUS_ENABLED: "true"
+      GF_AUTH_ANONYMOUS_ORG_ROLE: Admin
+      GF_AUTH_DISABLE_LOGIN_FORM: "true"
+      GF_ANALYTICS_REPORTING_ENABLED: "false"
+      GF_ANALYTICS_CHECK_FOR_UPDATES: "false"
+      GF_ANALYTICS_CHECK_FOR_PLUGIN_UPDATES: "false"
+      GF_NEWS_NEWS_FEED_ENABLED: "false"
+      INU_PROMETHEUS_URL: "http://{prometheus_addr}"
+      # Jaeger 2.21 dropped the legacy /api/traces HTTP API; this toggle makes
+      # Grafana's Jaeger data source use Jaeger's /api/v3 query API instead.
+      GF_FEATURE_TOGGLES_ENABLE: jaegerEnableGrpcEndpoint
+      INU_JAEGER_URL: "http://{jaeger_ui_addr}"
+      INU_DASHBOARDS_DIR: "{config}/grafana/dashboards"
+    health_url: http://{grafana_addr}:{grafana_port}/api/health
+
+# Printed by `inu obs up`: point INU's telemetry at this stack.
+inu_env:
+  INU_TELEMETRY__TRACES__EXPORTER: otlp
+  INU_TELEMETRY__TRACES__OTLP_ENDPOINT: http://{jaeger_otlp_http_addr}
+  INU_TELEMETRY__METRICS__EXPORTER: otlp
+  INU_TELEMETRY__METRICS__OTLP_ENDPOINT: http://{prometheus_addr}/api/v1/otlp

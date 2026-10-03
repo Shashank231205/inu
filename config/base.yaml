@@ -4,6 +4,15 @@
 
 instance_name: inu
 
+# Downloaded models and local state (gitignored). Relative paths resolve against the
+# working directory.
+data_dir: data
+
+network:
+  # Antivirus or a proxy re-signs HTTPS on some machines; the OS store trusts it.
+  system_trust_store: true
+  download_timeout_s: 30
+
 log:
   level: INFO
   format: json

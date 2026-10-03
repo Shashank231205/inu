@@ -7,6 +7,7 @@ core depending on it.
 
 import argparse
 import sys
+import time
 from collections.abc import Sequence
 from importlib.metadata import entry_points
 from typing import Protocol
@@ -15,6 +16,7 @@ import structlog
 import yaml
 
 from inu.config import ConfigError, Settings, load_settings
+from inu.net import configure_tls
 from inu.observability import init_observability, stage, turn
 
 COMMAND_GROUP = "inu.commands"
@@ -57,19 +59,25 @@ class DiagCommand:
     help = "Emit a synthetic turn to test logs and telemetry"
 
     def configure(self, parser: argparse.ArgumentParser) -> None:
-        """Takes no arguments beyond the shared --profile."""
+        parser.add_argument(
+            "--turns", type=int, default=1, help="Several turns let dashboards compute rates"
+        )
+        parser.add_argument("--interval-ms", type=float, default=0.0, help="Pause between turns")
 
     def run(self, args: argparse.Namespace, settings: Settings) -> int:
         telemetry = init_observability(settings)
         log = structlog.get_logger("inu.diag")
         try:
-            with turn() as turn_id:
-                for name in DIAG_STAGES:
-                    with stage(name):
-                        log.info("diag.stage", stage=name)
+            for index in range(args.turns):
+                if index:
+                    time.sleep(args.interval_ms / 1000)
+                with turn() as turn_id:
+                    for name in DIAG_STAGES:
+                        with stage(name):
+                            log.info("diag.stage", stage=name)
+                print(f"Emitted diagnostic turn {turn_id}")
         finally:
             telemetry.shutdown()
-        print(f"Emitted diagnostic turn {turn_id}")
         return 0
 
 
@@ -81,6 +89,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     except ConfigError as exc:
         print(exc, file=sys.stderr)
         return EXIT_CONFIG_ERROR
+    configure_tls(settings.network)
     return commands[args.command].run(args, settings)
 
 

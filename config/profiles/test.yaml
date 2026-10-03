@@ -8,3 +8,7 @@ log:
 features:
   private_mode: true
   cloud_llm: false
+
+network:
+  # Tests never download; keep the process-wide ssl module untouched.
+  system_trust_store: false

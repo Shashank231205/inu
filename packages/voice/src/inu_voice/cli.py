@@ -5,7 +5,7 @@ import asyncio
 import os
 
 from inu.config import Settings
-from inu.observability import configure_logging
+from inu.observability import init_observability
 from inu_voice.audio import AudioBackend, AudioDeviceError, AudioEngine, DeviceKind, select_device
 from inu_voice.audio.bench import BenchReport, run_bench
 from inu_voice.audio.sounddevice_backend import SoundDeviceBackend
@@ -42,9 +42,14 @@ class AudioCommand:
             if args.audio_action == "devices":
                 print(render_devices(backend, settings))
                 return 0
-            configure_logging(settings.log)
+            telemetry = init_observability(settings)  # xrun counters reach the dashboards
             burners = round((os.cpu_count() or 1) * args.cpu_load)
-            report = asyncio.run(_bench(settings, backend, args.seconds, burners, args.gil_load))
+            try:
+                report = asyncio.run(
+                    _bench(settings, backend, args.seconds, burners, args.gil_load)
+                )
+            finally:
+                telemetry.shutdown()
         except AudioDeviceError as exc:
             print(f"audio error: {exc.message}")
             return EXIT_DEVICE_ERROR
